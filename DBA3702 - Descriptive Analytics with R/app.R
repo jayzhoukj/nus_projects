@@ -274,7 +274,7 @@ server <- function(session,input, output){
           
           })
           
-          register_google(key='AIzaSyBKNZLfGl7FCDNmIhZmibexeWPBKl5XWXI')
+          register_google(key='')
           
           getMap <- reactive({
             get_map(as.character(input$citi), zoom = 13, maptype = input$mapType)}
