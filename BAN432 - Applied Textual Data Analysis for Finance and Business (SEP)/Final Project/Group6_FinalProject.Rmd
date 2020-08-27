@@ -1,0 +1,604 @@
+---
+title: "Emerging Technologies in the Last Decade"
+subtitle: 'BAN432 Final Project -- Fall 2019'
+author: "Candidate no: 6, 10, 55, 90, 91"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+  pdf_document: default
+  html_notebook: default
+abstract: "In this report, we try to address the following research question (RQ) using textual analysis: What are the emerging and successful technologies during the last years? Using textual analysis to answer this question has an empirical appeal, namely letting the data speak by itself."
+---
+
+# 1 Introduction
+In order to answer our research question, we will look at documents surrounding Initial Public Offerings (IPOs). The economic rationale is that firms which go public have successfully created a business which has growth potential in the eyes of investors. In other words, if a new successful industry emerges, many firms in this field will go public. Hence, comparing textual information of these firms to firms that went public a decade ago, will inform us about new emerging technologies. To solve the task, we will work with a sample of S-1 and S-1/A forms that the issuer files to the Securities and Exchange Commission (SEC) shortly before the IPO date. The prospectus describes, among others, the proposed business and the risk factors. The sample that we use covers documents that were filed in the 2nd quarter of the years 2008 to 2019, but not all forms from that period are part of the sample.
+
+<!-----------------------------------------------------------------------------------------------------------------------------------------------> 
+
+# 2 Preprocessing and Cleaning
+The sample of S-1 and S-1/A files is classified as unstructured data. Some of the irrelevant information such as information about the company, the file or attachments has already been deleted by the lecturers. However, we had to carry out further cleaning steps. First, we removed punctuation and digits which are not relevant to our word-based RQ. Second, the words were converted to lowercase because it is only of interest what word is used and not how. Later, we also removed stop words, as this word category often occurs in textual data, but does not provide any information relevant to our RQ. We removed stop words in a later step because it was easier to code. Stemming was not a part of our cleaning steps because the algorithm does not always work well, and it is sometimes difficult to find out the meaning of stemmed words. We have cleaned up both provided file versions (the data file that contains all words classes and the one that only consists of nouns and adjectives) and performed our analysis on both versions. The results are nearly the same, which is expected, since technology related words are mostly nouns. 
+
+<!-- Clean Documents with all Word classes --> 
+```{r include=FALSE}
+rm(list = ls()) # delete environment 
+cat("\f") # delete console 
+setwd("/Users/patrick/Desktop/TextualData/FinalProject") # set working directory 
+```
+
+<!-- Clean Documents with all word classesn--> 
+```{r eval=FALSE, include=FALSE}
+file.cik = c() # empthy vectors
+file.year = c()
+file.month = c()
+file.date = c()
+file.data = c()
+file.list = list.files("/Users/patrick/Desktop/TextualData/FinalProject/ipos_2nd_qtr_2008_2019") # list all files in the folder
+
+for(i in 1:length(file.list)){
+  # Load File
+  data.raw = readLines(paste0(file.path("/Users/patrick/Desktop/TextualData/FinalProject/ipos_2nd_qtr_2008_2019", 
+                                        file.list[i])), encoding = "UTF-8")
+  # Obtain Information
+  file.cik[i]   = gsub("(.+)-(.+)-(.+)-(.+).txt", "\\1", file.list[i]) # read one specific information
+  file.year[i]  = gsub("(.+)-(.+)-(.+)-(.+).txt", "\\2", file.list[i])
+  file.month[i] = gsub("(.+)-(.+)-(.+)-(.+).txt", "\\3", file.list[i])
+  file.date[i]  = gsub("(.+)-(.+)-(.+)-(.+).txt", "\\4", file.list[i])
+
+  # Clean Files
+  data.raw = gsub("[[:digit:]]", " ", data.raw) # remove digits
+  data.raw = gsub("[[:punct:]]", " ", data.raw) # remove punctuation
+  data.raw = tolower(data.raw) # convert to lowercase
+  data.raw = gsub("\\s+"," ",data.raw) # remove excessive whitespace
+  
+  # Save the Cleaned Documents
+  write.csv(data.raw, file.path("/Users/patrick/Desktop/TextualData/FinalProject/FilesStructured", paste0(file.cik[i], ".txt"))) 
+  file.data[i] = data.raw # save in one vector
+  
+  # Control
+  print(i)
+}
+
+# Save Files
+files = data.frame(file.data, file.cik, file.year, file.month, file.date, stringsAsFactors = F) # make data frame
+files = files[order(file.year, file.month, file.date), ] # order data frame by date
+files.data = files[,1] # save file data
+files.info = files[,2:5] # save file info
+save("files.data", "files.info", file = "FinalProject.Rdata")
+```
+
+<!-- Clean Documents with only Nouns and Adjectives  --> 
+```{r eval=FALSE, include=FALSE}
+rm(list = ls()) # delete environment 
+cat("\f") # delete console 
+setwd("/Users/patrick/Desktop/TextualData/FinalProject") # working directory
+```
+
+<!-- Clean Documents with only Nouns and Adjectives--> 
+```{r eval=FALSE, include=FALSE}
+file.cik = c() # empthy vectors
+file.year = c()
+file.month = c()
+file.date = c()
+file.data = c()
+file.list = list.files("/Users/patrick/Desktop/TextualData/FinalProject/ipos_2nd_qtr_2008_2019_nouns_adj") # list all files in the folder
+
+for(i in 1:length(file.list)){ 
+  # Load File
+  data.raw = readLines(paste0(file.path("/Users/patrick/Desktop/TextualData/FinalProject/ipos_2nd_qtr_2008_2019_nouns_adj", 
+                                        file.list[i])), encoding = "UTF-8")
+  # Obtain Information
+  file.cik[i]   = gsub("(.+)-(.+)-(.+)-(.+).txt", "\\1", file.list[i]) # read one specific information
+  file.year[i]  = gsub("(.+)-(.+)-(.+)-(.+).txt", "\\2", file.list[i])
+  file.month[i] = gsub("(.+)-(.+)-(.+)-(.+).txt", "\\3", file.list[i])
+  file.date[i]  = gsub("(.+)-(.+)-(.+)-(.+).txt", "\\4", file.list[i])
+
+  # Clean Files
+  data.raw = strsplit(data.raw[2:length(data.raw)], "\\t") # first line not needed 
+  data.raw = matrix(unlist(data.raw), ncol = 2, byrow = T) # make a matrix
+  data.raw = paste0(data.raw[ , 1], collapse = " ") # save only nouns and adjectives not the additional information
+  data.raw = gsub("[[:digit:]]", " ", data.raw) # remove digits
+  data.raw = gsub("[[:punct:]]", " ", data.raw) # remove punctuation
+  data.raw = tolower(data.raw) # convert to lowercase
+  data.raw = gsub("\\s+"," ",data.raw) # remove excessive whitespace
+  
+  # Save the Cleaned Documents
+  write.csv(data.raw, file.path("/Users/patrick/Desktop/TextualData/FinalProject/FilesStructured2", paste0(file.cik[i], ".txt"))) 
+  file.data[i] = data.raw # save in one vector
+  
+  # Control
+  print(i)
+}
+
+# Save Files
+files = data.frame(file.data, file.cik, file.year, file.month, file.date, stringsAsFactors = F) # make data frame
+files = files[order(file.year, file.month, file.date), ] # order data frame by date
+files.data = files[,1] # save file data 
+files.info = files[,2:5] # save file info
+save("files.data", "files.info", file = "FinalProject2.Rdata")
+```
+
+<!-----------------------------------------------------------------------------------------------------------------------------------------------> 
+
+# 3 A First Indication of Emerging Industries
+In general, the SEC's industry classification is not fully trustworthy as it is subject to human judgment. Moreover, a company can change its business, but the classification may not change at all. However, unlike old companies, IPO companies often have a limited business field, which makes it easier to make a human judgment about industry affiliation. In addition, these companies are young and therefore often still active in their industry. Thus, a look at the IPO companies' industries can provide some information.  
+
+We have collected the SEC’s industry classification for the IPO companies in our sample using the EDGAR API. Unfortunately, the API is unable to collect information about all IPO companies in our sample. We even tried live API calls on the EDGAR website, but it does not work there either. As a result, we were only able to collect information of about two-thirds of the companies, but that should be enough to gain initial insights. The following table shows the most common industries among the IPO companies in our sample. Most companies emerge in the healthcare, oil and computer industry. This may give a first indication of the industries where technology trends are taking place and about some keywords which we can expect in our word-based analysis.
+
+<!-- EDGAR API --> 
+```{r eval=FALSE, include=FALSE}
+rm(list = ls()) # delete environment 
+cat("\f") # delete console 
+setwd("/Users/patrick/Desktop/TextualData/FinalProject") # set working directory 
+load(file.path("/Users/patrick/Desktop/TextualData/FinalProject/FinalProject.Rdata")) # load documents
+#load(file.path("/Users/patrick/Desktop/TextualData/FinalProject/FinalProject2.Rdata")) # load documents only with nouns and adjectives
+```
+
+<!-- EDGAR API --> 
+```{r eval=FALSE, include=FALSE}
+edgar.key = "e71f5761620ba6824b1dcadd3385e68d"
+edgar.cik = files.info[,1]
+edgar.info = matrix(nrow = nrow(files.info), ncol=3, byrow=T)
+colnames(edgar.info) = c("cik", "siccode", "sicdescription") # gather releveant information
+
+for(i in 1:length(edgar.cik)){ # 
+cik = paste0("000", edgar.cik[i])
+edgar.url = paste0("http://datafied.api.edgar-online.com/v2/", "companies.xml?", "ciks=", cik ,"&limit=20", "&appkey=", edgar.key)
+edgar.data = readLines(edgar.url, warn = FALSE)
+if(length(edgar.data[grepl("<value field=\"cik\">.+</value>", edgar.data)]) == 0 | 
+   length(edgar.data[grepl("<value field=\"siccode\">.+</value>", edgar.data)]) == 0 | 
+   length(edgar.data[grepl("<value field=\"sicdescription\">.+</value>", edgar.data)]) == 0 ){ # because api cannot find all companies
+edgar.info[i, 1] = NA
+edgar.info[i, 2] = NA
+edgar.info[i, 3] = NA
+}
+else{
+edgar.info[i, 1] = gsub(".+<value field=\"cik\">(.+)</value>", "\\1", edgar.data[grepl("<value field=\"cik\">.+</value>", edgar.data)])
+edgar.info[i, 2] = gsub(".+<value field=\"siccode\">(.+)</value>", "\\1", edgar.data[grepl("<value field=\"siccode\">.+</value>", edgar.data)])
+edgar.info[i, 3] = gsub(".+<value field=\"sicdescription\">(.+)</value>", "\\1", edgar.data[grepl("<value field=\"sicdescription\">.+</value>", edgar.data)])
+}
+print(i)
+}
+edgar.freq = table(edgar.info[,3])
+edgar.freq = sort(edgar.freq, decreasing = T)
+edgar.freq = data.frame(edgar.freq)
+colnames(edgar.freq) = c("sicdescription", "freq")
+table(is.na(edgar.info[,1]))
+save("edgar.info", "edgar.freq", file = "FinalProjectEdgar.Rdata")
+```
+
+<!-- EDGAR API --> 
+```{r echo=FALSE}
+load(file.path("/Users/patrick/Desktop/TextualData/FinalProject/FinalProjectEdgar.Rdata")) # load all data
+colnames(edgar.freq) = c("Industry Description", "Frequency")
+write.table(x = edgar.freq[1:15,], file = "TabelleEdgar.txt")
+edgar.freq[1:15,] # give out top industries
+```
+
+<!-----------------------------------------------------------------------------------------------------------------------------------------------> 
+
+# 4 Keywords and Keyness Analysis
+As IPO companies go public, in the S-1 forms they write a lot about companies´ business, financial issues and perspectives in order to give potential investors insights and to comply with SEC´s regulations. Therefore, an analysis based on word frequencies will mostly return terms that are related to financial issues. This can be seen in the table below which shows the most frequent words in our study corpus (explained later). As we are not interested in these words, an analysis just based on the IPO files itself is not sufficient to answer our RQ.
+
+<!-- Keywords and Keyness --> 
+```{r eval=FALSE, include=FALSE}
+rm(list = ls()) # delete environment 
+cat("\f") # delete console 
+setwd("/Users/patrick/Desktop/TextualData/FinalProject") # set working directory
+load(file.path("/Users/patrick/Desktop/TextualData/FinalProject/FinalProject.Rdata")) # load documents
+#load(file.path("/Users/patrick/Desktop/TextualData/FinalProject/FinalProject2.Rdata")) # load documents only with nouns and adjectives
+load(file.path("/Users/patrick/Desktop/TextualData/FinalProject/Assignment2Data.Rdata")) # load reference corpus 
+```
+
+<!-- Keywords and Keyness --> 
+```{r eval=FALSE, include=FALSE}
+library(tm)
+library(slam)
+
+# Reference Corpus
+dtm = DocumentTermMatrix(Corpus(VectorSource(files.control)), control = list(removePunctuation = T, stopwords = T, removeNumbers = T, tolower=T, stemming = F, wordLengths = c(3,20))) 
+dtm = data.frame(as.matrix(dtm))
+corpus.reference = data.frame(token = colnames(dtm), freq = colSums(dtm))
+
+# Study Corpus: extract data from different years 
+dtm.1 = DocumentTermMatrix(Corpus(VectorSource(files.data[1:100])), control = list(removePunctuation=T, stopwords=T, removeNumbers=T, tolower=T, stemming=F, wordLengths=c(3,20)))
+dtm.2 = DocumentTermMatrix(Corpus(VectorSource(files.data[501:600])), control = list(removePunctuation=T, stopwords=T, removeNumbers=T, tolower=T, stemming=F, wordLengths = c(3,20)   ))
+dtm.3 = DocumentTermMatrix(Corpus(VectorSource(files.data[1001:1100])), control = list(removePunctuation=T, stopwords=T, removeNumbers=T, tolower=T, stemming=F, wordLengths = c(3,20)))
+dtm.4 = DocumentTermMatrix(Corpus(VectorSource(files.data[1501:1600])), control = list(removePunctuation=T, stopwords=T, removeNumbers=T, tolower=T, stemming=F, wordLengths = c(3,20)))
+dtm.5 = DocumentTermMatrix(Corpus(VectorSource(files.data[2001:2100])), control = list(removePunctuation=T, stopwords=T, removeNumbers=T, tolower=T, stemming=F, wordLengths = c(3,20)))
+
+dtm = c(dtm.1,dtm.2, dtm.3, dtm.4, dtm.5) #
+dtm2 = data.frame(as.matrix(dtm))
+corpus.study = data.frame(token = colnames(dtm2), freq = colSums(dtm2)) 
+save("corpus.reference", "corpus.study", "dtm", file = "FinalProjectCorpus.Rdata")
+```
+
+<!-- Keywords and Keyness --> 
+```{r eval=FALSE, include=FALSE}
+rm(list = ls()) # delete environment 
+cat("\f") # delete console 
+setwd("/Users/patrick/Desktop/TextualData/FinalProject") # set working directory
+load(file.path("/Users/patrick/Desktop/TextualData/FinalProject/FinalProjectCorpus.Rdata")) # load reference corpus from second assignment
+#load(file.path("/Users/patrick/Desktop/TextualData/FinalProject/FinalProjectS1Data.Rdata")) # load reference corpus consisting of S-1 or S-1/A files
+```
+
+<!-- Keywords and Keyness --> 
+```{r eval=FALSE, include=FALSE}
+library(tm)
+library(slam)
+
+# Frequency Distribution
+corpus.freq  = col_sums(dtm)
+corpus.freq  = data.frame(corpus.freq )
+corpus.freq  = data.frame(rownames(corpus.freq ), corpus.freq )
+colnames(corpus.freq ) = c("Token", "Frequency")
+corpus.freq  = corpus.freq [order(corpus.freq$Frequency, decreasing=T), ]
+rownames(corpus.freq ) = c(1:nrow(corpus.freq ))
+
+# Process DTM with global bounds and frequency
+dtm = dtm[, col_sums(dtm > 0) >= 10 & col_sums(dtm > 0) <= 150] # global bound for DTM
+dtm = data.frame(as.matrix(dtm))
+corpus.study = data.frame(token = colnames(dtm), freq = colSums(dtm))
+corpus.merged = merge(x = corpus.reference, y = corpus.study, by = "token", all = F) # merge two corpora
+corpus.merged = corpus.merged[corpus.merged$freq.x >= 100 & corpus.merged$freq.y >= 100, ] # delete less frequent words
+
+# Compute Keyness with Log-likelihood ratio
+LL = c()
+for(j in 1:nrow(corpus.merged)){ # 
+a = corpus.merged[j,2] # Frequency Word in Corpus Reference
+b = corpus.merged[j,3] # Frequency Word in Corpus Study
+c = sum(corpus.merged[,2]) # All tokens in Corpus Reference
+d = sum(corpus.merged[,3]) # All tokens in Corpus Study
+E1 = c*(a+b)/(c+d) # Expected Frequency
+E2 = d*(a+b)/(c+d) # Expected Frequency
+LL[j] = 2*((a*log(a/E1)) + (b*log(b/E2))) # log likelihood ratio
+}
+corpus.merged = data.frame(corpus.merged, LL)
+corpus.merged = corpus.merged[order(LL, decreasing=T), ]
+corpus.mergedtopic = corpus.merged[corpus.merged$LL>=3.84, ] # for later
+corpus.merged = corpus.merged[ corpus.merged$LL>=400, ] # only consider very high LL
+
+# Interesting Trend Words 
+search=c("mobile", "digital", "networks", "platforms", "cloud", "analytics", "automotive", "semiconductor","devices", "clinical", 
+         "hospital", "drilling", "oil", "diagnostic", "gaming", "cyber", "cars", "physician", "household", "statistics" )
+    
+corpus.words = data.frame(corpus.merged[corpus.merged$token %in%  search, ])
+rownames(corpus.words) = c(1:nrow(corpus.words))
+colnames(corpus.words) = c("Trend Word","Freq Reference Corpus", "Freq Study Corpus", "LL")
+write.table(x = corpus.freq[1:15,], file = "TabelleCorpus.txt")
+write.table(x = corpus.words, file = "TabelleWords.txt")
+save("corpus.words","search", "corpus.freq","corpus.mergedtopic", file = "FinalProjectKandK.Rdata")
+```
+
+```{r echo=FALSE}
+load(file.path("/Users/patrick/Desktop/TextualData/FinalProject/FinalProjectKandK.Rdata")) # load trend words
+corpus.freq[1:15,]
+```
+
+One way to perform this analysis is to compare a study corpus with a reference corpus. Our study corpus consists of 500 files collected from different years. The files were chosen by chance. Even though this is probably not a representative sample from a statistical point of view, we think that the sample is able to answer our RQ. Our study corpus consists of 3.4 million tokens and 52,000 types and is thus big enough to reveal important insights. We have limited the corpus due to performance issues and due to the Heaps’ law, which states that with more text (tokens) there are diminishing returns of new vocabulary (types). A reasonable reference corpus should be able to cover a similar language, i.e. it should contain a lot of words about business and finance. We tested two different reference corpora. The first one consists of the 10-K-files from 2018/2019 from the second home assignment. The second one consists of S-1 and S-1/A files from 2004/2005. Since both cover mainly financial language, the results are nearly similar. One might argue that trends are also present in old companies and thus question the use of a corpus that is up to date. In fact, most trends are emerging in new companies. However, for an empirically elaborate analysis, both reference corpora might be not the best choice because they only cover files from two years and only from one source. The later analysis is based on the 10-K corpus which consists of 11.4 million tokens and 76,000 types. We have chosen this one because it might contain more topics.  
+
+We conducted an analysis based on keywords and keyness to identify those words that occur relatively more often in our study corpus than one would expect, in comparison to our reference corpus. The frequency difference of words between the two corpora must be statistically significant. As a statistical measure of association, we used the log-likelihood ratio. This analysis can identify words that stand out. Thus, it is a useful technique for term extraction. In order to achieve good results, we have set several bounds in this analysis. In creating the Document Term Matrix, we have set a global word bound. However, it is hard to find a reasonable bound because there is a trade-off. On the one hand, we do not want to consider words that appear in many documents because they are often financial terms and not relevant to our RQ. This implies that we need to set a low global word bound. However, since IPO companies often emerge in similar industries or use similar technologies, a too low bound would also eliminate relevant trend words too. In addition, we have also set a bound to the actual frequency in order to eliminate words that occur infrequently. In the last step we have only chosen those words with a high significantly log-likelihood ratio. As a result, we obtained a list of about 150 terms. We have selected 20 words that appear unusual, compared to everyday language, and are not financial terms. The words are shown in the table below. The same analysis based on the co-occurrence of words (n-grams) did not reveal additional information since technology words do not often appear in fixed phrases or specific collocations in comparison to financial terms.
+
+<!-- Keywords and Keyness --> 
+```{r echo=FALSE}
+corpus.words
+```
+
+There are some similarities if we compare our analysis based on keywords and keyness with the SEC’s industry classification. In our list of about 150 keywords, many of them are related to the same industries, namely healthcare, oil and the computer industry. We did not take financial words into account in our analysis, because we were not able to clearly differentiate whether there could be a trend in the financial industry or if the words are just related to the IPO. Nevertheless, we are convinced that there are a lot of developments going on in the field of finance due to the digitalization. 
+
+<!-----------------------------------------------------------------------------------------------------------------------------------------------> 
+
+\pagebreak
+## 4.1 Keywords in Context
+After we identified relevant keywords based on the keyness-analysis, we used the keyword in context method to examine how the words are used and whether they can represent any trends. For a given keyword, this method shows which words are commonly used in connection with that keyword. This is shown with a word cloud. We have identified 10 important trends, which are presented in the following table. In this chapter, we explain each trend in detail. 
+
+<!-- Keywords in Context --> 
+```{r eval=FALSE, include=FALSE}
+rm(list = ls()) # delete environment 
+cat("\f") # delete console 
+setwd("/Users/patrick/Desktop/TextualData/FinalProject") # working directory
+load(file.path("/Users/patrick/Desktop/TextualData/FinalProject/FinalProject.Rdata")) # load all data
+#load(file.path("/Users/patrick/Desktop/TextualData/FinalProject/FinalProject2.Rdata")) # load only nouns and adjectives
+load(file.path("/Users/patrick/Desktop/TextualData/FinalProject/FinalProjectKandK.Rdata")) # load trend words
+```
+
+<!-- Keywords in Context --> 
+```{r eval=FALSE, include=FALSE}
+library(tibble)
+library(dplyr)
+library(wordcloud)
+library(tm)
+
+# KWIC
+files.sample = files.data[c(1:100, 501:600, 1001:1100, 1501:1600, 2001:2100)]
+wordclouds.data=c()
+business.des = sapply(files.sample, function(i) {scan(text = i, what = "character", quote = "")}) # scan function to each of the texts
+make.KWIC = function(index.env, business.des, n, doc.nr){ # 
+  KWIC = tibble(left = sapply(index.env, function(i) {paste(business.des[(i-n):(i-1)], collapse = " ")}),
+                keyword = business.des[index.env], 
+                right = sapply(index.env, function(i) {paste(business.des[(i+1):(i+n)], collapse = " ")}),
+                doc.nr = doc.nr,
+                position.in.text = index.env/(length(business.des)*0.01))
+  return(KWIC)
+}
+
+# Wordclouds
+for (s in 1:length(search)){ # 
+  index.env = sapply(business.des, function(i) {grep(paste0("", search[s], ""), i, ignore.case =T)}) # Find the elements that matches the search term
+  result = list() # Iterate over the lists 'index.env' and 'business.des' using the function 
+  for(i in 1:length(business.des)){
+    result[[i]] = make.KWIC(index.env[[i]], business.des[[i]], n = 3, doc.nr = i)
+  }
+merged.results = do.call("rbind", result) # Combine the tibbles into one, using do.call()
+
+# Right
+  # Find the most common words for right and left context
+  merged.results$right %>%
+    paste(collapse = " ") %>% # paste it into one long string
+    scan(text = ., what = "character", quote = "") -> right.context # tokenize it with scan()
+  # Clean text 
+  right.context %>%
+    tolower() %>% # convert to lower case
+    gsub("^[[:punct:]]+|[[:punct:]]+$", "", .) %>% # remove punctuation in the beginning and in the end
+    .[!. %in% tm::stopwords()] -> right.context.cleaned # remove stopwords (based on tm stopword list)
+  # Convert text
+  right.context.cleaned %>%
+    table() %>% # Make a frequency list
+    as_tibble() %>% # convert into a tibble
+    arrange(desc(n)) -> inputright.cloud # descending order
+  colnames(inputright.cloud) = c("word", "freq") # Give new column names
+  filename = paste0(search[s], "right", ".png")
+  png(file.path("/Users/patrick/Desktop/TextualData/FinalProject/KWIC",filename), 2000, 2000) # saves as PNG-File
+  wordcloud(words = inputright.cloud$word[1:40], freq  = inputright.cloud$freq[1:40], 
+            random.order = F, scale = c(20,3), colors=brewer.pal(8, "Dark2")) #  wordcloud
+  dev.off() # switches off the PNG-File
+
+# Left 
+  merged.results$left %>%
+    paste(collapse = " ") %>% # paste it into one long string
+    scan(text = ., what = "character", quote = "") -> left.context # tokenize it with scan()
+  # Clean text 
+  left.context %>%
+    tolower() %>% # convert to lower case
+    gsub("^[[:punct:]]+|[[:punct:]]+$", "", .) %>% # remove punctuation in the beginning and in the end
+    .[!. %in% tm::stopwords()] -> left.context.cleaned # remove stopwords (based on tm stopword list)
+  # Convert text
+  left.context.cleaned %>%
+    table() %>% # Make a frequency list
+    as_tibble() %>% # convert into a tibble
+    arrange(desc(n)) -> inputleft.cloud # descending order
+  colnames(inputleft.cloud) = c("word", "freq") # Give new column names
+  filename = paste0(search[s],"left", ".png")
+  png(file.path("/Users/patrick/Desktop/TextualData/FinalProject/KWIC",filename), 2000, 2000) # saves as PNG-File
+  wordcloud(words = inputleft.cloud$word[1:40], freq  = inputleft.cloud$freq[1:40], 
+            random.order = F, scale = c(20,3), colors=brewer.pal(8, "Dark2")) # wordcloud
+  dev.off() # switches off the PNG-File
+
+# Save Data
+wordclouds.data = cbind(wordclouds.data, inputright.cloud$word[1:40], 
+                        inputright.cloud$freq[1:40], inputleft.cloud$word[1:40], inputleft.cloud$freq[1:40])
+# Control
+print(s)
+}
+# Save Wordcloud Data
+save("wordclouds.data", file = "FinalProjectWordcloud.Rdata")
+```
+
+```{r include=FALSE}
+library(knitr) # For knitting document and include_graphics function
+```
+
+<!-- Keywords in Context --> 
+```{r echo=FALSE}
+trends=c("mobile", "digital", "networks", "platforms", "cloud", "analytics", "automotive", "oil", "semiconductor", "health")
+trends
+```
+
+### 4.1.1 Mobile & Digital Transformation
+The word cloud on the left is more related to mobile applications by relating to apps in mobile phones or other mobile devices or platforms. The rapid growth of worldwide smartphone users shifts various applications towards mobile devices and hence also the traditional distribution channels. Besides, the mobile drilling devices units are quite often mentioned, which are not in the same context of mobile applications but are more related to the oil sector. The word cloud on the right shows a relation to the digital transformation in classical business processes such as advertising or marketing as well as in typical industries like automotive or media. As we know, the digitalization is quite often mentioned by many governments because it is regarded as the engine of the third industrial revolution during recent years. Therefore, we believe that there is a trend towards a much deeper digital transformation of companies and processes, as well as towards mobile applications or other similar digital products.
+
+<!-- Keywords in Context --> 
+```{r echo=FALSE, out.width = "35%"}
+myimages = list.files("/Users/patrick/Desktop/TextualData/FinalProject/PDF", pattern = ".png", full.names = TRUE)
+include_graphics(myimages[c(5,4)])
+```
+
+### 4.1.2 Networks & Platforms
+The left word cloud shows a relation to network technologies such as 5G in cellular technology. In relation to this, the usage of private or public networks and the use of wireless and virtual networks are often mentioned. The rapid development of mobile telecommunication, big data analytics and internet of things (IoT) drives the growing demand towards a more efficient network. The right word cloud shows platform technologies. The development of digital platforms is affecting many traditional industries such as the aircraft industry or the maritime industry. For example, due to new environmental regulations the maritime industry is using big data and digital platforms to optimize their shipping routes, improve their energy efficiency and reduce emissions. Additionally, in comparison to the reference corpus the usage of social media platforms has shifted into the center of many companies’ attention. Therefore, new networks and platforms technology are important for these companies to gain better access to the insights found on social media and might also be an indicator that telecommunication and IoT companies are restructuring to keep up with the mobile network demands of our increasingly digitalized society. 
+
+<!-- Keywords in Context --> 
+```{r echo=FALSE, out.width = "35%"}
+myimages = list.files("/Users/patrick/Desktop/TextualData/FinalProject/PDF", pattern = ".png", full.names = TRUE)
+include_graphics(myimages[c(6,7)])
+```
+
+### 4.1.3 Cloud & Analytics 
+From the two word clouds below we find that cloud computing, cloud services, data analytics and information analytics are the main keywords under these topics. The word cloud on the left suggests that the usage of cloud service is widely discussed, such as cloud processes and cloud solutions. The word cloud on the right applies to our topic on data analytics and from there, we can see that analytics is applied in different areas such as marketing, advertising and management. As cloud services are often employed in analytics to provide companies with real-time information analysis on consumer behavior, business performance issues are another important topic for companies as it helps them to track their process and operational efficiency. Moreover, the cloud service and data analytics are not only an emerging area among these IPO companies, but also, they both play a crucial role in the trends mentioned earlier. Across time, data has been increasingly gathered and the amount of publicly available data has increased in the past decade. As companies start to realize the importance of big data to optimize business processes and analyze consumer feedback or sentiment, the demand for data analysts and data analytics has been on the rise. And at the same time, the big data analytics requires new solutions like cloud storage and cloud computing in order not to be limited by physical hardware. These could be one of the contributing factors to the upwards trend in the IPOs in both areas.
+
+<!-- Keywords in Context --> 
+```{r echo=FALSE, out.width = "40%"}
+myimages = list.files("/Users/patrick/Desktop/TextualData/FinalProject/PDF", pattern = ".png", full.names = TRUE)
+include_graphics(myimages[c(3,1)])
+```
+
+### 4.1.4 Automotive, Oil & Semiconductor
+Across the past decade, there is a sharp increase in the awareness of environmental issues. As investors nowadays place a greater emphasis on environmental, social and governance issues, the companies whose business appeal to investors are more likely to perform well through strong investors’ (funding) support. This may also be one explanation for the recent trend changes in the oil industry, as firms try to be more environmentally friendly. The shift towards a stronger preference for green and environment-friendly energy also has an impact on the automotive industry. It has, to a large extent, contributed towards the development of new cars and other mobility devices which are more energy efficient and environment-centric in design. The latest trend in the automotive industry involves the creation of self-driving cars. Led by Tesla, this shift in focus has created a new niche in the automotive industry that has allowed other automobile manufacturers to contribute to automation in the automotive industry. Hence, new firms can easily enter this area of research and development. Some relations to the analytics industry are also revealed, as the judgement of human experts and the collection of road usage data are essentially required in order to enhance and improve machine learning algorithms. Semiconductors are a core ingredient to all the electronic devices that people use. With the increasing trend seen in areas such as mobile, digital and automotive industry, demand for semiconductors will increase and thus this industry can be expected to be a part of the emerging trend in relation to IPO firms.
+
+<!-- Keywords in Context --> 
+```{r echo=FALSE, out.width = "40%"}
+myimages = list.files("/Users/patrick/Desktop/TextualData/FinalProject/PDF", pattern = ".png", full.names = TRUE)
+include_graphics(myimages[c(2,8)])
+```
+
+### 4.1.5 Healthcare Innovations
+For the healthcare sectors, word clouds do not give us deep insights, but the high frequency of terms in our list (keyness analysis) in relation to the health sector (hospital, clinical, devices, etc.) indicate that there is something going on in this industry. This trend in the health sector may be linked to digitalization trends such as the increased use of personal electronic devices (mobile phones and smartwatches) to track personal health indicators (activity tracking). This also contributes to the increasing trend displayed in the mobile and digital space. The rising trend in the field of healthcare in the United States may also be partially credited to the aging population that the U.S. is facing, where the number of senior citizens above 65 years old are set to double across 2000 and 2040. This increase directly stimulates more demand on healthcare in the U.S. and contributes to the innovation trends in the health sector. 
+
+<!-----------------------------------------------------------------------------------------------------------------------------------------------> 
+
+## 4.2 Topic Model
+In addition to the keyword and keyness analysis, we also estimated a topic model that identifies and categorizes the topics that the IPO companies have talked about. For the topic model, we heavily restricted the Document Term Matrix that we used. We only used those words that have a statistically significant frequency difference compared to the reference corpus. Thus, it is based on the keyness analysis. We estimated a topic model because it can cluster a lot of terms identified by the keyness analysis, especially in relation to the health care industry and the oil sector. Thus, it may provide some additional insights regarding emerging trends. In total we estimated 12 topics. Among them the four key topics are: digitalization, telecommunication, healthcare and oil. The other topics are related to finance, manufacturing, gaming, households, etc. However, the topic model might overall not be the most convincing approach in identifying technological trends. We do not know how well the model assigned the topics. But the method can be regarded as a supplement to the previous analysis. 
+
+<!-- Topicmodel --> 
+```{r eval=FALSE, include=FALSE}
+rm(list = ls()) # delete environment 
+cat("\f") # delete console 
+setwd("/Users/patrick/Desktop/TextualData/FinalProject") # set working directory
+load(file.path("/Users/patrick/Desktop/TextualData/FinalProject/FinalProjectCorpus.Rdata")) # load corpora
+load(file.path("/Users/patrick/Desktop/TextualData/FinalProject/FinalProjectKandK.Rdata")) # load trend words
+```
+
+<!-- Topicmodel --> 
+```{r eval=FALSE, include=FALSE}
+# Topicmodel
+library(topicmodels)
+library(wordcloud)
+
+dtm = dtm[ ,dtm$dimnames$Terms %in% corpus.mergedtopic$token  ]
+
+topic = LDA(dtm, # document term matrix
+            k = 12, # specifify number of topics
+            method = "Gibbs",
+            control = list(
+              seed = 12345, # eases replication
+              burnin = 100, # how often sampled before estimation recorded 
+              iter = 300, # number of iterations
+              keep = 1, # saves additional data per iteration (such as logLik)
+              save = F, # saves logLiklihood of all iterations
+              verbose = T
+            ))
+
+beta = exp(topic@beta) # log of probability reported
+gamma = topic@gamma # Topic distribution for each document
+topic@loglikelihood # Loglikelihood of the choosen model      
+plot(topic@logLiks, type = "l") # at some point more iterations does not help to improve the solution
+apply(beta, 1, function(temp.b){head(topic@terms[order(temp.b, decreasing = T)], 10)}) # inspect the most common terms of all topics       
+
+# Wordcloud
+for(k in 1:12){
+  terms.top.40 = head(topic@terms[order(beta[k,], decreasing = T)], 40) # Topic names
+  prob.top.40 = head(sort(beta[k,], decreasing = T), 40) # Topic Frequency
+  filename = paste0("Topic", k)
+  png(file.path("/Users/patrick/Desktop/TextualData/FinalProject/Topic",filename), 2000, 2000) # saves as PNG-File
+  wordcloud(words = terms.top.40, freq = prob.top.40, random.order = F, scale = c(20, 3), colors=brewer.pal(8, "Dark2"))
+  dev.off() # switches off the PNG-File
+  print(k)
+}
+
+# Save
+save("topic", "beta", "gamma", file = "FinalProjectTopic.Rdata")
+```
+
+<!-- Topicmodel --> 
+```{r echo=FALSE, out.width = "35%"}
+library(knitr)    # For knitting document and include_graphics function
+library(ggplot2)  # For plotting
+myimages = list.files("/Users/patrick/Desktop/TextualData/FinalProject/PDF/Topic", pattern = ".png", full.names = TRUE)
+include_graphics(myimages[c(4,2)])
+```
+```{r echo=FALSE, out.width = "40%"}
+include_graphics(myimages[c(1,3)])
+```
+
+<!-----------------------------------------------------------------------------------------------------------------------------------------------> 
+
+# 5 Conclusion
+This report shows how textual data analysis can be applied to gather insights in the areas of business as well as how to identify emerging industries and technologies for IPO companies. It is determined that mobile & digital, networks & platforms, cloud & analytics, automotive, oil & semiconductors and healthcare are some of the industries and technologies relevant to emerging companies. To arrive at our analysis, we have used a keyness analysis to identify words that appear more frequently in our corpus than expected. After that the keywords in context method was used in order to identify the relevance of the chosen words. Based on this, a topic model was estimated for a further identification and clustering of the topics among emerging companies. However, there are also limitations on the relevance of the outcomes. Textual data analysis cannot specifically identify the technologies involved, rather it gives a broad overview about emerging industries and technology fields. This might be due to the way companies describe about their technologies, or a lack thereof, since some of these technologies might involve sensitive company information and are regarded as trade secrets. We also realized that the topic model might not be the optimal approach because the result of this model is challenging to evaluate. 
+
+<!-----------------------------------------------------------------------------------------------------------------------------------------------> 
+
+<!-- Download Corpus consisting of S1 and S1/A files or 10-K files--> 
+```{r eval=FALSE, include=FALSE}
+####################################################################################
+rm(list = ls()) # delete environment
+cat("\f") # delete console
+setwd("/Users/patrick/Desktop/TextualData/FinalProject") # set working directory 
+library(dplyr)
+library(tm)
+library(slam)
+####################################################################################
+# Task 1: gather data from EDGAR #
+
+months = c("2004/QTR1", "2004/QTR2", "2005/QTR3","2005/QTR4") # use quarters 
+      # months = c("2018/QTR4", "2019/QTR1", "2019/QTR2","2019/QTR3") # use quarters to access the last twelve months
+totalfiles = 0
+k10files = 0
+for(i in months){
+  # Build URL 
+  web.url = paste0("https://www.sec.gov/Archives/edgar/full-index/", i , "/master.idx") # construct url
+  
+  # Download Index Files
+  file.path = paste0(substr(i,1,4), "_", substr(i,6,9), ".txt") # file name
+  download.file(web.url, file.path("/Users/patrick/Desktop/TextualData/FinalProject/S1Forms/IndexFiles", 
+                                   file.path), mode="wb") # download file
+  # Read and Structure Index files 
+  edgar.index.raw = readLines(web.url) # read file into R
+  edgar.index = strsplit(edgar.index.raw[12:length(edgar.index.raw)], split="\\|") # split data according to "|"
+  edgar.index = matrix(unlist(edgar.index), ncol = 5, byrow = T) # make a matrix
+  edgar.index = as.data.frame(edgar.index, stringsAsFactors = F) # make a data frame
+  colnames(edgar.index) = c("cik", "company.name", "form.type", "data.filed", "url") # column names
+  
+  # Read Company Files with form S-1 or S-1/A or 10-K
+  edgar.index = subset(edgar.index, form.type=="S-1" | form.type=="S-1/A") # limit to "S1"
+      # edgar.index = subset(edgar.index, form.type=="10-K") # limit to "10-K"
+  totalfiles = totalfiles + nrow(edgar.index) # count
+  edgar.index =  edgar.index[!duplicated(edgar.index$cik),] # optional 
+  edgar.index = edgar.index[1:150,] # optional 
+      # edgar.index = subset(edgar.index, edgar.index$cik %in% comp$cik) # limit to specific firms
+  k10files = k10files + nrow(edgar.index) # count
+  
+  # Download Files 
+  edgar.index$file.path = paste0("K10_", substr(i,1,4), "_", substr(i,6,9), "_", edgar.index$cik[1:nrow(edgar.index)], ".txt") # the name for the file 
+  for(j in 1:nrow(edgar.index)){ #  go over all files in the current index file
+    file.path = edgar.index$file.path[j] # file name
+    download.file(url = paste0("https://www.sec.gov/Archives/",edgar.index$url[j]), 
+                  file.path("/Users/patrick/Desktop/TextualData/FinalProject/S1Forms/K10Files", file.path), mode="wb") # download file
+  }
+}
+
+####################################################################################
+# Task 2: clean the Files #
+
+# Read and Structur Files 
+file_list = list.files("/Users/patrick/Desktop/TextualData/FinalProject/S1Forms/K10Files") # list all files in the folder
+for(k in 1:length(file_list)){ #
+  edgar.10k.raw = readLines(paste0(file.path("/Users/patrick/Desktop/TextualData/FinalProject/S1Forms/K10Files",file_list[k])), encoding = "UTF-8") # load data
+        # edgar.10k = edgar.10k.raw[grep(pattern = "^<TYPE>", edgar.10k.raw)[1]:grep(pattern = "^<TYPE>", edgar.10k.raw)[2]] # only use <TYPE>10-K
+  edgar.10k = edgar.10k.raw[grep(pattern = "^<TEXT>", edgar.10k.raw)[1]:grep(pattern = "^</TEXT>", edgar.10k.raw)[1]] # subset over <TEXT>
+        #edgar.10k = edgar.10k[grep(pattern = "^<TEXT>", edgar.10k)[1]:grep(pattern = "^</TEXT>", edgar.10k)[1]] # subset over <TEXT>
+  edgar.10k <- gsub("<.+?>", " ", edgar.10k) # remove all html-tags
+  edgar.10k <- gsub("&.+?;", " ", edgar.10k) # ""
+  edgar.10k =  toString(edgar.10k) # make a string
+  edgar.10k = gsub("[[:digit:]]", " ", edgar.10k) # remove digits
+  edgar.10k = gsub("[[:punct:]]", " ", edgar.10k) # remove punctuation
+  edgar.10k = tolower(edgar.10k) # convert to lowercase
+  edgar.10k = gsub("\\s+"," ",edgar.10k) # remove excessive whitespace
+  print(k)
+  write.csv(edgar.10k, file.path("/Users/patrick/Desktop/TextualData/FinalProject/S1Forms/K10FilesStructured", file_list[k])) # save the document
+}
+
+# Load Files
+files.control=c()
+cik=c()
+file_list = list.files("/Users/patrick/Desktop/TextualData/FinalProject/S1Forms/K10FilesStructured") # list all files in the folder
+for(e in 1:length(file_list)){ 
+  edgar = readLines(paste0(file.path("/Users/patrick/Desktop/TextualData/FinalProject/S1Forms/K10FilesStructured",file_list[e])), encoding = "UTF-8") # load data
+  files.control  = c(files.control, toString(edgar))
+  company =  gsub(".+_(.+).txt", "\\1", file_list[e])
+  cik = c(cik, company)
+  print(e)
+}
+
+# Build Reference Corpus
+dtm.1 = DocumentTermMatrix(Corpus(VectorSource(files.control[1:100])), control = list(removePunctuation=T, stopwords=T, removeNumbers=T, tolower=T, stemming=F, wordLengths = c(3,20)))
+dtm.2 = DocumentTermMatrix(Corpus(VectorSource(files.control[101:200])), control = list(removePunctuation=T, stopwords=T, removeNumbers=T, tolower=T, stemming=F, wordLengths = c(3,20)))
+dtm.3 = DocumentTermMatrix(Corpus(VectorSource(files.control[201:300])), control = list(removePunctuation=T, stopwords=T, removeNumbers=T, tolower=T, stemming=F, wordLengths = c(3,20)))
+dtm.4 = DocumentTermMatrix(Corpus(VectorSource(files.control[301:400])), control = list(removePunctuation=T, stopwords=T, removeNumbers=T, tolower=T, stemming=F, wordLengths = c(3,20)))
+dtm.5 = DocumentTermMatrix(Corpus(VectorSource(files.control[401:500])), control = list(removePunctuation=T, stopwords=T, removeNumbers=T, tolower=T, stemming=F, wordLengths = c(3,20)))
+dtm.6 = DocumentTermMatrix(Corpus(VectorSource(files.control[501:600])), control = list(removePunctuation=T, stopwords=T, removeNumbers=T, tolower=T, stemming=F, wordLengths = c(3,20)))
+dtm = c(dtm.1, dtm.2, dtm.3, dtm.4, dtm.5, dtm.6) # 
+dtm = data.frame(as.matrix(dtm)) # 
+corpus.reference = data.frame(token = colnames(dtm), freq = colSums(dtm)) # 
+
+# Save Data
+save("corpus.reference", file = "FinalProjectS1Data.Rdata") # Save data to easy access them later
+```
+
+<!-----------------------------------------------------------------------------------------------------------------------------------------------> 
