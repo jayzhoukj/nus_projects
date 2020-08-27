@@ -1,0 +1,6 @@
+SELECT name,address FROM Customers_Info c
+	INNER JOIN Orders o
+		ON c.customer_id = o.customer_id
+	INNER JOIN Items_from_order i
+		ON o.order_id = i.order_id
+	WHERE i.product_name = 'Lime';
